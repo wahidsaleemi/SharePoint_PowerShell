@@ -10,7 +10,7 @@ function SetAlternateCss {
   .EXAMPLE 
   SetAlternateCss -File C:\temp\mySiteList.csv -DocumentExisting
   .PARAMETER File 
-  Specify the path and name of the CSV file containing a list of URLs for the SharePoint sites.
+  Specify the path and name of the CSV file containing a list of URLs for the SharePoint sites (SPWeb).
   .PARAMETER DocumentExisting 
   Use this switch to only document the existing values. It will create a file at $env:TEMP\SiteInfo.csv
   #> 
@@ -20,6 +20,9 @@ Param(
 [Parameter()]
 [switch]$DocumentExisting
 )
+
+#Load SharePoint assemblies
+[System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
 
 #Set some parameters
 $siteinfo = "$env:TEMP\SiteInfo.csv"
@@ -45,11 +48,11 @@ foreach ($site in $sites)
 }
 
 
-#Define the function to change the AlternateCssUrl
-function ProcessSites {
+#FUNCTION not used. Will process all sites (SPWebs) in a Site Collection.
+function ProcessSiteCollection {
 foreach ($site in $sites)
     {
-        $spsite = [Microsoft.SharePoint.SPSite]($site)
+        $spsite = [Microsoft.SharePoint.SPSite]($site);
         foreach ($web in $spsite.AllWebs)
                     {
                     Write-Output "Updating $web.Title"
@@ -60,12 +63,28 @@ foreach ($site in $sites)
     }
 }
 
+#Define the function to change the AlternateCssUrl
+function ProcessWebs {
+foreach ($site in $sites)
+    {
+        $spsite = [Microsoft.SharePoint.SPSite]($site);
+        if ($spsite -ne $null)
+            {
+            $web = $spsite.OpenWeb();
+            Write-Output "Updating $web.Title"
+            $web.AlternateCssUrl = "/Style Library/CustomStyles/custom.css"
+            $web.AllProperties["__InheritsAlternateCssUrl"] = $True
+            $web.Update()
+            }
+    }
+}
+
 #Execute
 If ($DocumentExisting)
     {
         RecordSiteInfo
     }
-Else {ProcessSites}
+Else {ProcessWebs}
 
 }
 
